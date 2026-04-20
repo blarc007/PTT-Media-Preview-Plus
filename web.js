@@ -1,9 +1,3 @@
-const links = [
-  ...document.querySelectorAll('a[href*="//imgur.com"]'),
-  ...document.querySelectorAll('a[href*="//i.imgur.com/"]'),
-  ...document.querySelectorAll('a[href*=".webp"]'),
-];
-
 function createDiv(...classes) {
   const div = document.createElement('div');
   div.classList.add(...classes);
@@ -31,80 +25,106 @@ function fixBrokenPreview(anchor) {
   }
 }
 
-const albums = [];
-const unknownHashes = [];
+const rules = [
+  {
+    name: 'imgur-album',
+    match: (a) => a.href.match(/https?:\/\/(?:[mi]\.)?imgur.com\/(?:a|gallery)\/(\w+)/),
+    apply: async (a, match) => {
+      const hash = match[1];
+      const links = await resolveAlbum(hash);
+      for (const link of links.reverse()) {
+        insertPreview(a, createLazyImageEl(link));
+      }
+    },
+  },
+  {
+    name: 'mopix',
+    match: (a) => a.href.match(/^https?:\/\/i\.mopix\.cc\/(.*)/),
+    apply: (a, match) => {
+      const path = match[1];
+      insertPreview(a, createLazyImageEl(`https://i-mopix-cc.translate.goog/${path}`));
+    },
+  },
+  {
+    name: 'meee',
+    match: (a) => a.href.match(/^https:\/\/meee\.com\.tw\/(\w+)$/),
+    apply: (a) => {
+      const url = new URL(a.href);
+      url.host = `i.${url.host}`;
+      url.pathname += '.jpg';
+      insertPreview(a, createLazyImageEl(url.toString()));
+    },
+  },
+  {
+    name: 'twitch',
+    match: (a) => a.href.match(/^https:\/\/clips\.twitch\.tv\/([\w-]+)/),
+    apply: (a, match) => {
+      const id = match[1];
+      const iframe = document.createElement('iframe');
+      iframe.classList.add('youtube-player');
+      iframe.type = 'text/html';
+      iframe.src = `https://clips.twitch.tv/embed?clip=${id}&parent=www.ptt.cc`;
+      iframe.allowFullscreen = true;
+      iframe.style.border = 'none';
+      const contentDiv = createDiv('resize-content');
+      contentDiv.appendChild(iframe);
+      const container = createDiv('resize-container');
+      container.appendChild(contentDiv);
+      insertPreview(a, container);
+    },
+  },
+  {
+    name: 'twitter-media',
+    match: (a) => a.href.match(/^https:\/\/pbs\.twimg\.com\/media\/.*format=/),
+    apply: (a) => {
+      insertPreview(a, createLazyImageEl(a.href));
+    },
+  },
+  {
+    name: 'youtube-start-time',
+    match: (a) => a.href.match(/^https:\/\/youtu\.be\/.*[?&]t=/),
+    apply: (a) => {
+      const url = new URL(a.href);
+      const start = url.searchParams.get('t');
+      const iframe = document.querySelector(`iframe.youtube-player[src*="${url.pathname}"]`);
+      if (iframe && !iframe.src.includes('start=')) {
+        iframe.src += (iframe.src.includes('?') ? '&' : '?') + `start=${start}`;
+      }
+    },
+  },
+  {
+    name: 'standard-image',
+    match: (a) => /(png|jpeg|jpg|gif|webp)$/i.test(a.href),
+    apply: (a) => {
+      fixBrokenPreview(a);
+    },
+  },
+  {
+    name: 'imgur-unknown',
+    match: (a) => a.href.match(/https?:\/\/(?:[mi]\.)?imgur.com\/(\w+)$/),
+    apply: async (a, match) => {
+      const hash = match[1];
+      const { type, link } = await resolveUnknown(hash);
+      let el = null;
+      if (type.startsWith('video/')) {
+        el = createVideoEl(link);
+      } else if (type.startsWith('image/')) {
+        el = createLazyImageEl(link);
+      }
+      if (el) {
+        insertPreview(a, el);
+      }
+    },
+  },
+];
 
-for (const a of links) {
-  const url = new URL(a.href);
-  const { pathname } = url;
-  let match = null;
-  if ((match = pathname.match(/^\/(?:a|gallery)\/(\w+)/))) {
-    albums.push([a, match[1]]);
-  } else if (/(png|jpeg|jpg|gif|webp)$/i.test(pathname)) {
-    fixBrokenPreview(a);
-  } else if ((match = pathname.match(/^\/(\w+)$/))) {
-    unknownHashes.push([a, match[1]]);
-  }
-}
-
-albums.forEach(async ([a, hash]) => {
-  const links = await resolveAlbum(hash);
-  for (const link of links.reverse()) {
-    insertPreview(a, createLazyImageEl(link));
-  }
-});
-
-unknownHashes.forEach(async ([a, hash]) => {
-  const { type, link } = await resolveUnknown(hash);
-  let el = null;
-  if (type.startsWith('video/')) {
-    el = createVideoEl(link);
-  } else if (type.startsWith('image/')) {
-    el = createLazyImageEl(link);
-  }
-  if (el) {
-    insertPreview(a, el);
-  }
-});
-
-for (const a of document.querySelectorAll('a[href^="https://meee.com.tw/"]')) {
-  const url = new URL(a.href);
-  if (!url.pathname.match(/^\/\w+$/)) {
-    continue;
-  }
-  url.host = `i.${url.host}`;
-  url.pathname += '.jpg';
-  insertPreview(a, createLazyImageEl(url.toString()));
-}
-
-for (const a of document.querySelectorAll('a[href^="https://clips.twitch.tv"]')) {
-  const url = new URL(a.href);
-  const iframe = document.createElement('iframe');
-  iframe.classList.add('youtube-player');
-  iframe.type = 'text/html';
-  iframe.src = `https://clips.twitch.tv/embed?clip=${url.pathname.slice(1)}&parent=www.ptt.cc`;
-  iframe.allowFullscreen = true;
-  iframe.style.border = 'none';
-  const contentDiv = createDiv('resize-content');
-  contentDiv.appendChild(iframe);
-  const container = createDiv('resize-container');
-  container.appendChild(contentDiv);
-  insertPreview(a, container);
-}
-
-for (const a of document.querySelectorAll('a[href^="https://pbs.twimg.com/media/"][href*="?format="]')) {
-  insertPreview(a, createLazyImageEl(a.href));
-}
-
-// fix youtube links with start time
-for (const a of document.querySelectorAll('a[href^="https://youtu.be/"]')) {
-  const url = new URL(a.href);
-  const start = url.searchParams.get('t');
-  if (!start) {
-    continue;
-  }
-  const iframe = document.querySelector(`iframe.youtube-player[src*="${url.pathname}"]`);
-  if (iframe) {
-    iframe.src += `?start=${start}`;
+const as = document.querySelectorAll('a');
+for (const a of as) {
+  for (const rule of rules) {
+    const match = rule.match(a);
+    if (match) {
+      rule.apply(a, match);
+      break;
+    }
   }
 }
