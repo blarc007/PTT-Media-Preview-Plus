@@ -65,7 +65,7 @@ new MutationObserver((records) => {
     overflow: hidden;
   `;
   const hoverImg = document.createElement('img');
-  hoverImg.style.cssText = 'max-width: 100%; max-height: 100%; display: block; object-fit: contain;';
+  hoverImg.style.cssText = 'max-width: 80vw; max-height: 80vh; display: block; object-fit: contain;';
   hoverPreview.appendChild(hoverImg);
   document.body.appendChild(hoverPreview);
 
