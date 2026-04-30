@@ -38,11 +38,13 @@ const rules = [
     },
   },
   {
-    name: 'mopix',
-    match: (a) => a.href.match(/^https?:\/\/i\.mopix\.cc\/(.*)/),
+    name: 'google-proxy',
+    match: (a) => a.href.match(/^https?:\/\/(i\.mopix\.cc|i\.ibb\.co)\/(.*)/),
     apply: (a, match) => {
-      const path = match[1];
-      insertPreview(a, createLazyImageEl(`https://i-mopix-cc.translate.goog/${path}`));
+      const domain = match[1];
+      const path = match[2];
+      const proxyDomain = domain.replaceAll('.', '-');
+      insertPreview(a, createLazyImageEl(`https://${proxyDomain}.translate.goog/${path}`));
     },
   },
   {

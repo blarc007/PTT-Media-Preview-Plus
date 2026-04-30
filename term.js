@@ -140,8 +140,8 @@ new MutationObserver((records) => {
         if (isImgur && ['standard-image', 'imgur-album'].includes(rule.name)) return;
         
         let previewUrl = a.href;
-        if (rule.name === 'mopix') {
-          previewUrl = `https://i-mopix-cc.translate.goog/${match[1]}`;
+        if (rule.name === 'google-proxy') {
+          previewUrl = `https://${match[1].replaceAll('.', '-')}.translate.goog/${match[2]}`;
         } else if (rule.name === 'meee') {
           const url = new URL(a.href);
           url.host = `i.${url.host}`;
@@ -238,11 +238,12 @@ new MutationObserver((records) => {
       },
     },
     {
-      name: 'mopix',
-      match: (a) => a.href.match(/^https?:\/\/i\.mopix\.cc\/(.*)/),
+      name: 'google-proxy',
+      match: (a) => a.href.match(/^https?:\/\/(i\.mopix\.cc|i\.ibb\.co)\/(.*)/),
       apply: (a, match) => {
-        const path = match[1];
-        const newUrl = `https://i-mopix-cc.translate.goog/${path}`;
+        const domain = match[1];
+        const path = match[2];
+        const newUrl = `https://${domain.replaceAll('.', '-')}.translate.goog/${path}`;
         const div = getPreviewContainer(a);
         if (div && !div.firstChild) {
           div.appendChild(createImage(newUrl));
