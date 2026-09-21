@@ -130,14 +130,18 @@ new MutationObserver((records) => {
     const a = e.target.closest('a');
     if (!a) return;
 
-    const isImgur = a.hostname.includes('imgur.com');
+    const isOfficialSupported =
+      a.hostname.includes('imgur.com') ||
+      a.hostname === 'i.meee.com.tw' ||
+      a.hostname === 'pbs.twimg.com';
 
     for (const rule of rules) {
       const match = rule.match(a);
       if (match) {
-        // 如果是影片規則，或者是由 PttChrome 原生支援的 Imgur 規則，則跳過自定義懸浮
+        // 如果是官方已原生支援的圖源（Imgur, i.meee.com.tw, pbs.twimg.com）或影片規則，跳過自定義懸浮視窗
+        if (rule.name === 'official-supported') return;
         if (['youtube', 'twitch'].includes(rule.name)) return;
-        if (isImgur && ['standard-image', 'imgur-album'].includes(rule.name)) return;
+        if (isOfficialSupported && ['standard-image', 'imgur-album'].includes(rule.name)) return;
         
         let previewUrl = a.href;
         if (rule.name === 'google-proxy') {
@@ -220,6 +224,11 @@ new MutationObserver((records) => {
 
   const rules = [
     {
+      name: 'official-supported',
+      match: (a) => /^https?:\/\/(?:i\.meee\.com\.tw|pbs\.twimg\.com)\//.test(a.href),
+      apply: () => {},
+    },
+    {
       name: 'imgur-album',
       match: (a) => a.href.match(/https?:\/\/(?:[mi]\.)?imgur.com\/(?:a|gallery)\/(\w+)/),
       apply: async (a, match) => {
@@ -261,16 +270,6 @@ new MutationObserver((records) => {
         const div = getPreviewContainer(a);
         if (div && !div.firstChild) {
           div.appendChild(createImage(imageUrl));
-        }
-      },
-    },
-    {
-      name: 'twitter-media',
-      match: (a) => a.href.startsWith('https://pbs.twimg.com/media/'),
-      apply: (a) => {
-        const div = getPreviewContainer(a);
-        if (div && !div.firstChild) {
-          div.appendChild(createImage(a.href));
         }
       },
     },

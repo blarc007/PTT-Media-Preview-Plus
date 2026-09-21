@@ -27,6 +27,11 @@ function fixBrokenPreview(anchor) {
 
 const rules = [
   {
+    name: 'official-supported',
+    match: (a) => /^https?:\/\/(?:i\.meee\.com\.tw|pbs\.twimg\.com)\//.test(a.href),
+    apply: () => {},
+  },
+  {
     name: 'imgur-album',
     match: (a) => a.href.match(/https?:\/\/(?:[mi]\.)?imgur.com\/(?:a|gallery)\/(\w+)/),
     apply: async (a, match) => {
@@ -73,13 +78,6 @@ const rules = [
       const container = createDiv('resize-container');
       container.appendChild(contentDiv);
       insertPreview(a, container);
-    },
-  },
-  {
-    name: 'twitter-media',
-    match: (a) => a.href.match(/^https:\/\/pbs\.twimg\.com\/media\/.*format=/),
-    apply: (a) => {
-      insertPreview(a, createLazyImageEl(a.href));
     },
   },
   {
